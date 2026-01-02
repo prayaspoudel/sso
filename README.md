@@ -38,9 +38,45 @@ The dashboard will be available at `http://localhost:5173`
 
 Create `admin-dashboard/.env`:
 ```env
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:3000
 VITE_SSO_CLIENT_ID=admin-dashboard
 ```
+
+**Backend Configuration:**
+
+The Access module uses environment-specific configuration files located in `../evero/config/access/`:
+- `local.json` - Local development
+- `development.json` - Development environment
+- `stage.json` - Staging environment
+- `production.json` - Production environment
+
+Example configuration structure:
+```json
+{
+  "app": {
+    "name": "Access Service",
+    "env": "local"
+  },
+  "web": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "username": "postgres",
+    "password": "password",
+    "name": "access_db"
+  },
+  "jwt": {
+    "secret": "your-secret-key",
+    "access_expiry": 900,
+    "refresh_expiry": 604800
+  }
+}
+```
+
+See `../evero/config/access/` for complete configuration examples.
 
 ### 2. TypeScript SDK (`sdk/`)
 
@@ -67,7 +103,7 @@ import { SSOClient, useSSOAuth } from '@union-products/sso-sdk';
 
 // Initialize the client
 const ssoClient = new SSOClient({
-  baseURL: 'http://localhost:8080',
+  baseURL: 'http://localhost:3000',  // Updated default port
   clientId: 'your-app-id'
 });
 
@@ -97,6 +133,18 @@ function App() {
 }
 ```
 
+**Available Endpoints:**
+- POST `/api/v1/auth/register` - User registration
+- POST `/api/v1/auth/login` - User login
+- POST `/api/v1/auth/refresh` - Refresh access token
+- POST `/api/v1/auth/logout` - User logout
+- GET `/api/v1/auth/me` - Get current user
+- POST `/api/v1/auth/verify-email` - Verify email
+- POST `/api/v1/auth/forgot-password` - Request password reset
+- POST `/api/v1/auth/reset-password` - Reset password
+
+For complete API documentation, see `../evero/docs/access/QUICK_REFERENCE.md`
+
 ## 🔗 Backend Service
 
 The SSO backend service has been integrated into the **Evero** project as the `access` module.
@@ -122,7 +170,18 @@ cd ../evero/deployment/access
 docker-compose up -d
 ```
 
-**API Documentation:** See `../evero/docs/ACCESS_README.md`
+Or using the Makefile:
+
+```bash
+cd ../evero
+make build-access    # Build the module
+make deploy-access   # Deploy with Docker Compose
+```
+
+**API Documentation:** 
+- Implementation Summary: `../evero/docs/access/IMPLEMENTATION_SUMMARY.md`
+- Quick Reference: `../evero/docs/access/QUICK_REFERENCE.md`
+- Migration Guide: `../evero/docs/access/MIGRATION_GUIDE.md`
 
 ## 🏗️ Architecture
 
@@ -150,8 +209,17 @@ docker-compose up -d
 │  │  - User/Company management                     │    │
 │  │  - OAuth2 flows                                │    │
 │  │  - Session management                          │    │
+│  │  - Two-factor authentication                   │    │
 │  │  - Audit logging                               │    │
 │  └────────────────────────────────────────────────┘    │
+│                                                          │
+│  Infrastructure Modules:                                │
+│  - Config (Viper)                                       │
+│  - Database (PostgreSQL/GORM)                           │
+│  - Logger (Logrus/Zap)                                  │
+│  - Router (Fiber)                                       │
+│  - Validator (go-playground)                            │
+│  - Message Broker (Kafka)                               │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
                        │
@@ -165,13 +233,16 @@ docker-compose up -d
 
 - **SDK Documentation**: See `sdk/README.md`
 - **Admin Dashboard**: See `admin-dashboard/README.md`
-- **API Reference**: See `../evero/docs/access/QUICK_REFERENCE.md`
+- **API Quick Reference**: See `../evero/docs/access/QUICK_REFERENCE.md`
+- **Integration Examples**: See `../evero/docs/access/MIGRATION_GUIDE.md`
 
 ### For Backend Developers
 
-- **Access Module**: See `../evero/docs/ACCESS_README.md`
+- **Access Module Overview**: See `../evero/docs/access/IMPLEMENTATION_SUMMARY.md`
 - **Implementation Details**: See `../evero/docs/access/`
 - **Database Schema**: See `../evero/database/access/migrations/`
+- **Platform Infrastructure**: See `../evero/docs/evero/INFRASTRUCTURE.md`
+- **Deployment Guide**: See `../evero/docs/evero/DEPLOYMENT.md`
 
 ## 🔄 Migration from Standalone SSO
 
@@ -209,9 +280,21 @@ evero/
 
 ```bash
 cd ../evero
+
+# Using Go directly
 go build -o bin/access app/access/main.go
 ./bin/access
+
+# Or using Makefile
+make build-access
+make run-access
+
+# Or using Docker
+cd deployment/access
+docker-compose up -d
 ```
+
+The API will be available at `http://localhost:3000` (default port)
 
 ### 2. Start the Admin Dashboard
 
@@ -221,11 +304,15 @@ npm install
 npm run dev
 ```
 
+The dashboard will be available at `http://localhost:5173`
+
 ### 3. Use the SDK in Your App
 
 ```bash
 npm install @union-products/sso-sdk
 ```
+
+See the [SDK examples](#quick-start) above for integration details.
 
 ## 🛠️ Development
 
@@ -260,5 +347,30 @@ This is part of the Union Products platform. For contribution guidelines, see th
 ## 📞 Support
 
 - **Issues**: Report in the Evero repository
-- **Documentation**: See `../evero/docs/ACCESS_README.md`
-- **API Questions**: Check `../evero/docs/access/`
+- **Documentation**: 
+  - Access Module: `../evero/docs/access/IMPLEMENTATION_SUMMARY.md`
+  - Infrastructure: `../evero/docs/evero/INFRASTRUCTURE.md`
+  - Deployment: `../evero/docs/evero/DEPLOYMENT.md`
+- **API Questions**: Check `../evero/docs/access/QUICK_REFERENCE.md`
+- **Architecture Overview**: Check `../evero/docs/evero/ARCHITECTURE.md`
+
+## 🔧 Recent Updates
+
+### Infrastructure Improvements
+- Modular infrastructure organization (config, database, logger, router, validator, message-broker)
+- Backwards-compatible wrapper functions for easy migration
+- Structured factory pattern for advanced use cases
+- Comprehensive deployment configurations for all modules
+- Enhanced documentation in `docs/evero/`
+
+### Access Module Features
+- Complete authentication and authorization system
+- Multi-tenant (company) support
+- OAuth 2.0 authorization code flow
+- Two-factor authentication (TOTP)
+- Session management with device tracking
+- Comprehensive audit logging
+- Email verification workflow
+- Password reset functionality
+
+For detailed platform architecture and infrastructure setup, see the [Evero Platform Documentation](../evero/docs/evero/).
